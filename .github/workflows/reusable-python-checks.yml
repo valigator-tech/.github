@@ -1,0 +1,60 @@
+# Reusable Python Checks
+# Called by each repo's pr-checks.yml
+#
+# Runs: pip install, ruff lint, ruff format check, bandit security scan
+# Inputs: python-version, requirements-file
+
+name: Python Checks
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: "Python version to use"
+        type: string
+        default: "3.12"
+      requirements-file:
+        description: "Space-separated list of requirements files"
+        type: string
+        default: "requirements.txt"
+
+jobs:
+  python-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ inputs.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          for req in ${{ inputs.requirements-file }}; do
+            if [ -f "$req" ]; then
+              pip install -r "$req"
+            else
+              echo "⚠️  Requirements file not found: $req (skipping)"
+            fi
+          done
+          pip install ruff bandit
+
+      - name: Ruff lint
+        run: ruff check . --output-format=github
+
+      - name: Ruff format check
+        run: ruff format --check .
+
+      - name: Bandit security scan
+        run: bandit -r . -x ./tests,./.venv -f json -o bandit-report.json || true
+
+      - name: Upload Bandit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-report
+          path: bandit-report.json
+          retention-days: 30

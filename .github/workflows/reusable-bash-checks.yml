@@ -1,0 +1,52 @@
+# Reusable Bash/Shell Checks
+# Called by each repo's pr-checks.yml
+#
+# Runs: ShellCheck on all .sh files
+# Inputs: shellcheck-severity
+
+name: Bash Checks
+
+on:
+  workflow_call:
+    inputs:
+      shellcheck-severity:
+        description: "Minimum severity level: error, warning, info, style"
+        type: string
+        default: "warning"
+
+jobs:
+  bash-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Find shell scripts
+        id: find-scripts
+        run: |
+          # Find .sh files and files with shell shebangs
+          SCRIPTS=$(find . -name '*.sh' -o -name '*.bash' | head -500)
+          SHEBANG_SCRIPTS=$(grep -rl '^#!/.*\(bash\|sh\)' --include='*' . 2>/dev/null | head -500)
+          ALL=$(echo -e "${SCRIPTS}\n${SHEBANG_SCRIPTS}" | sort -u | grep -v '^\./\.git/')
+          if [ -z "$ALL" ]; then
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "No shell scripts found — skipping"
+          else
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            echo "$ALL" > /tmp/shell-scripts.txt
+            echo "Found $(wc -l < /tmp/shell-scripts.txt) shell script(s)"
+          fi
+
+      - name: Run ShellCheck
+        if: steps.find-scripts.outputs.found == 'true'
+        run: |
+          while IFS= read -r script; do
+            echo "::group::Checking $script"
+            shellcheck --severity=${{ inputs.shellcheck-severity }} \
+                       --format=gcc "$script" || true
+            echo "::endgroup::"
+          done < /tmp/shell-scripts.txt
+
+          # Run again for exit code (fail on errors)
+          shellcheck --severity=${{ inputs.shellcheck-severity }} \
+                     $(cat /tmp/shell-scripts.txt | tr '\n' ' ')
