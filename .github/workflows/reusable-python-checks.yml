@@ -2,7 +2,7 @@
 # Called by each repo's pr-checks.yml
 #
 # Runs: pip install, ruff lint, ruff format check, bandit security scan
-# Inputs: python-version, requirements-file
+# Inputs: python-version, requirements-file, system-packages
 
 name: Python Checks
 
@@ -17,6 +17,10 @@ on:
         description: "Space-separated list of requirements files"
         type: string
         default: "requirements.txt"
+      system-packages:
+        description: "Space-separated list of apt packages to install before pip (e.g. 'libmariadb-dev libpq-dev')"
+        type: string
+        default: ""
 
 jobs:
   python-checks:
@@ -24,6 +28,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Install system packages
+        if: inputs.system-packages != ''
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ${{ inputs.system-packages }}
 
       - name: Set up Python ${{ inputs.python-version }}
         uses: actions/setup-python@v5
