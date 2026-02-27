@@ -30,4 +30,4 @@ jobs:
         run: pip install ansible-lint
 
       - name: Run ansible-lint
-        run: ansible-lint --profile ${{ inputs.profile }} --format github
+        run: ansible-lint --profile ${{ inputs.profile }} --format pep8
