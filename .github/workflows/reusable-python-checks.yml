@@ -3,6 +3,11 @@
 #
 # Runs: pip install, ruff lint, ruff format check, bandit security scan
 # Inputs: python-version, requirements-file, system-packages
+#
+# Auto-detects system packages for common Python C-extension dependencies:
+#   mariadb     → libmariadb-dev
+#   mysqlclient → default-libmysqlclient-dev
+#   psycopg2    → libpq-dev
 
 name: Python Checks
 
@@ -29,11 +34,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install system packages
-        if: inputs.system-packages != ''
+      - name: Auto-detect and install system packages
         run: |
-          sudo apt-get update
-          sudo apt-get install -y ${{ inputs.system-packages }}
+          PKGS="${{ inputs.system-packages }}"
+
+          # Map well-known Python packages to their required system libraries
+          for req in ${{ inputs.requirements-file }}; do
+            if [ -f "$req" ]; then
+              grep -qi '^mariadb'      "$req" && PKGS="$PKGS libmariadb-dev"
+              grep -qi '^mysqlclient'  "$req" && PKGS="$PKGS default-libmysqlclient-dev"
+              grep -qi '^psycopg2[^-]' "$req" && PKGS="$PKGS libpq-dev"
+            fi
+          done
+
+          # De-duplicate and install
+          PKGS=$(echo "$PKGS" | tr ' ' '\n' | sort -u | tr '\n' ' ')
+          if [ -n "$(echo "$PKGS" | tr -d ' ')" ]; then
+            echo "Installing system packages: $PKGS"
+            sudo apt-get update
+            sudo apt-get install -y $PKGS
+          fi
 
       - name: Set up Python ${{ inputs.python-version }}
         uses: actions/setup-python@v5
