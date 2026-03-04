@@ -28,6 +28,15 @@ jobs:
           SCRIPTS=$(find . -name '*.sh' -o -name '*.bash' | head -500)
           SHEBANG_SCRIPTS=$(grep -rl '^#!/.*\(bash\|sh\)' --include='*' . 2>/dev/null | head -500)
           ALL=$(echo -e "${SCRIPTS}\n${SHEBANG_SCRIPTS}" | sort -u | grep -v '^\./\.git/')
+          # Filter out files listed in .shellcheckignore (if present)
+          if [ -f .shellcheckignore ]; then
+            while IFS= read -r pattern; do
+              # Skip blank lines and comments
+              [[ -z "$pattern" || "$pattern" == \#* ]] && continue
+              # Filter out exact matches (with ./ prefix)
+              ALL=$(echo "$ALL" | grep -v -Fx "./$pattern")
+            done < .shellcheckignore
+          fi
           if [ -z "$ALL" ]; then
             echo "found=false" >> "$GITHUB_OUTPUT"
             echo "No shell scripts found — skipping"
