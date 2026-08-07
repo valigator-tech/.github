@@ -1,0 +1,16 @@
+# Dependabot for the org shared-CI repo (VGTR-1960).
+#
+# Keeps the GitHub Actions used by the reusable workflows patched (checkout,
+# setup-python, upload-artifact, …) via reviewed PRs. The ruff/bandit pin in
+# reusable-python-checks.yml is INLINE (see the comment there — the reusable
+# workflow checks out the calling repo, so a requirements file here is not
+# present at runtime), so Dependabot's pip ecosystem cannot track it; ruff/bandit
+# bumps are made as reviewed PRs to this repo.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "ci"

@@ -70,7 +70,13 @@ jobs:
               echo "⚠️  Requirements file not found: $req (skipping)"
             fi
           done
-          pip install ruff bandit
+          # Pin the linters for a DETERMINISTIC gate (VGTR-1960). Unpinned,
+          # `python-checks` drifts red on unchanged code whenever ruff broadens
+          # its defaults (ruff 0.16.0 added 1,200+ default findings). The pin must
+          # be INLINE: this reusable workflow runs actions/checkout against the
+          # CALLING repo, so a requirements file living in valigator-tech/.github
+          # is not present at runtime. Bumps are reviewed PRs to this repo.
+          pip install "ruff==0.16.1" "bandit==1.9.4"
 
       - name: Ruff lint
         run: ruff check . --output-format=github
